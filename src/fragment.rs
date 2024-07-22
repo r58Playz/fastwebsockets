@@ -23,17 +23,18 @@ use crate::WebSocket;
 #[cfg(feature = "unstable-split")]
 use crate::WebSocketRead;
 use crate::WriteHalf;
+use bytes::BytesMut;
 use tokio::io::AsyncRead;
 use tokio::io::AsyncWrite;
 
 pub enum Fragment {
-  Text(Option<utf8::Incomplete>, Vec<u8>),
-  Binary(Vec<u8>),
+  Text(Option<utf8::Incomplete>, BytesMut),
+  Binary(BytesMut),
 }
 
 impl Fragment {
   /// Returns the payload of the fragment.
-  fn take_buffer(self) -> Vec<u8> {
+  fn take_buffer(self) -> BytesMut {
     match self {
       Fragment::Text(_, buffer) => buffer,
       Fragment::Binary(buffer) => buffer,
@@ -222,13 +223,13 @@ impl Fragments {
         } else {
           self.fragments = match frame.opcode {
             OpCode::Text => match utf8::decode(&frame.payload) {
-              Ok(text) => Some(Fragment::Text(None, text.as_bytes().to_vec())),
+              Ok(text) => Some(Fragment::Text(None, text.into())),
               Err(utf8::DecodeError::Incomplete {
                 valid_prefix,
                 incomplete_suffix,
               }) => Some(Fragment::Text(
                 Some(incomplete_suffix),
-                valid_prefix.as_bytes().to_vec(),
+                valid_prefix.into(),
               )),
               Err(utf8::DecodeError::Invalid { .. }) => {
                 return Err(WebSocketError::InvalidUTF8);

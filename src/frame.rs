@@ -85,6 +85,12 @@ impl From<Vec<u8>> for Payload<'_> {
   }
 }
 
+impl From<BytesMut> for Payload<'_> {
+	fn from(owned: BytesMut) -> Self {
+		Payload::Bytes(owned)
+	}
+}
+
 impl From<Payload<'_>> for Vec<u8> {
   fn from(cow: Payload<'_>) -> Self {
     match cow {
@@ -92,6 +98,17 @@ impl From<Payload<'_>> for Vec<u8> {
       Payload::BorrowedMut(borrowed_mut) => borrowed_mut.to_vec(),
       Payload::Owned(owned) => owned,
       Payload::Bytes(b) => Vec::from(b),
+    }
+  }
+}
+
+impl From<Payload<'_>> for BytesMut {
+  fn from(cow: Payload<'_>) -> Self {
+    match cow {
+      Payload::Borrowed(borrowed) => BytesMut::from(borrowed),
+      Payload::BorrowedMut(borrowed_mut) => BytesMut::from(&*borrowed_mut),
+      Payload::Owned(owned) => BytesMut::from(owned.as_slice()),
+      Payload::Bytes(b) => b,
     }
   }
 }
